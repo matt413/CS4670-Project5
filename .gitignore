@@ -11,3 +11,25 @@
 *.lai
 *.la
 *.a
+
+# Additional files to ignore
+*.pdf
+*.suo
+*.opensdf
+*.sdf
+*.vcxproj.user
+*Debug
+*Release
+*solution
+*code
+*.exe
+*.f
+*.db
+*.txt
+*.key
+*.pgm
+*.ppm
+*.tga
+*.sh
+*.sln
+*zip_files
