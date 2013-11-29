@@ -33,3 +33,4 @@
 *.sh
 *.sln
 *zip_files
+*test_sets
