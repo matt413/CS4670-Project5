@@ -292,7 +292,33 @@ TinyImageGradFeatureExtractor::operator()(const CFloatImage &imgRGB_, Feature &f
     // Useful functions:
     // convertRGB2GrayImage, TypeConvert, WarpGlobal, Convolve
 
-printf("TODO: %s:%d\n", __FILE__, __LINE__); 
+printf("TinyImageGradFeatureExtractor::operator(): %s:%d\n", __FILE__, __LINE__); 
+    
+    // Convert image to grayscale
+    CFloatImage imgG;
+    convertRGB2GrayImage(imgRGB_, imgG);
+
+    // Resize image to be targetW by targetH
+    CFloatImage tinyImg(targetW, targetH, 1);
+    CTransform3x3 s = CTransform3x3::Scale( 1. / _scale, 1. / _scale );
+    WarpGlobal(imgG, tinyImg, s, eWarpInterpLinear);
+    
+    // Compute gradients in x and y directions
+    CFloatImage dX, dY;
+    Convolve(tinyImg, dX, _kernelDx);   // gradient in x direction 
+    Convolve(tinyImg, dY, _kernelDy);   // gradient in y direction
+
+    // Compute gradient magnitude
+    CFloatImage magImg(targetW, targetH, 1);
+
+    for (int j=0; j<targetH; j++) {
+        for (int i=0; i<targetW; i++) {
+            magImg.Pixel(i, j, 0) = sqrt(pow(dX.Pixel(i, j, 0), 2) + pow(dY.Pixel(i, j, 0), 2));
+        }
+    }
+
+    // Return feature
+    feat = magImg;
 
     /******** END TODO ********/
 }
@@ -407,7 +433,36 @@ HOGFeatureExtractor::operator()(const CFloatImage &img, Feature &feat) const
     // Useful functions:
     // convertRGB2GrayImage, TypeConvert, WarpGlobal, Convolve
 
-printf("TODO: %s:%d\n", __FILE__, __LINE__); 
+printf("HOGFeatureExtractor::operator(): %s:%d\n", __FILE__, __LINE__); 
+    int imgWidth = img.Shape().width; 
+    int imgHeight = img.Shape().height;
+
+    // Compute gradients in x and y directions
+    CFloatImage dxImg, dyImg;
+    Convolve(img, dxImg, _kernelDx);   // gradient in x direction 
+    Convolve(img, dyImg, _kernelDy);   // gradient in y direction
+
+    // Compute gradient magnitude and orientation
+    CFloatImage magImg(imgWidth, imgHeight, 1);
+    CFloatImage orntImg(imgWidth, imgHeight, 1);
+
+    double dx, dy;
+
+    for (int j=0; j<imgHeight; j++) {
+        for (int i=0; i<imgWidth; i++) {
+            dx = dxImg.Pixel(i, j, 0);
+            dy = dyImg.Pixel(i, j, 0);
+            
+            // Compute gradient magnitude and store in magImg
+            magImg.Pixel(i, j, 0) = sqrt(pow(dx, 2) + pow(dy, 2));
+
+            // Compute gradient orientation and store in orntImg
+            if(dx == 0.0 && dy == 0.0)
+	        	orntImg.Pixel(i, j, 0) = 0.0;
+	        else
+	        	orntImg.Pixel(i, j, 0) = atan2(dy, dx);
+        }
+    }
 
     /******** END TODO ********/
 }
