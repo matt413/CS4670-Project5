@@ -89,8 +89,30 @@ SupportVectorMachine::train(const std::vector<float> &labels, const FeatureColle
     // the last one being simply to indicate that the feature has ended by setting the index
     // entry to -1
     _data = new svm_node[nVecs * (dim + 1)];
-
-printf("TODO: %s:%d\n", __FILE__, __LINE__); 
+	double dLabel = (double)labels[0];
+	problem.y = &dLabel;
+	svm_node *dataPtr = &_data[0];
+	for (int i = 0; i < nVecs; i++){
+		Feature currentFeature = fset[i];
+		for (int j = 0; j < dim+1; j++){
+			int band = j % shape.nBands;
+			int xPixel = (int)floor(j/3.0);
+			int yPixel = i;
+			if(j == 0) {
+				dataPtr->index = 0;
+				dataPtr->value = currentFeature.Pixel(xPixel, yPixel, band);
+				problem.x[i] = dataPtr;
+			}
+			else if(j == dim) {
+				dataPtr->index = -1;
+			}
+			else {
+				dataPtr->index = j;
+				dataPtr->value = currentFeature.Pixel(xPixel, yPixel, band);
+			}
+			dataPtr += 1;
+		}
+	}
 
     /******** END TODO ********/
 
@@ -265,8 +287,23 @@ SupportVectorMachine::predictSlidingWindow(const Feature &feat, CFloatImage &res
     //
     // Useful functions:
     // Convolve, BandSelect, this->getWeights(), this->getBiasTerm()
-
-printf("TODO: %s:%d\n", __FILE__, __LINE__); 
+	double bias = this->getBiasTerm();
+	Feature weights = this->getWeights();
+	weights.origin[0] = (int)floor(weights.Shape().height / 2.0);
+	weights.origin[1] = (int)floor(weights.Shape().width / 2.0);
+	CFloatImage convImg = CFloatImage(feat.Shape());
+	Convolve(feat, convImg, weights);
+	float prediction = 0.;
+	for(int x = 0; x < feat.Shape().width; x++) {
+		for(int y = 0; y < feat.Shape().height; y++) {
+			float bandSum = 0.;
+			for(int bandNum = 0; bandNum < feat.Shape().nBands; bandNum++) {
+				bandSum += convImg.Pixel(x,y,bandNum);
+			}
+			prediction = bandSum - bias;
+			response.Pixel(x,y,0) = prediction;
+		}
+	}
 
     /******** END TODO ********/
 }
