@@ -29,9 +29,27 @@ Detection::relativeOverlap(const Detection &other) const
     // rectangles r1 and r2, and AreaUnion is the area of the union
     // of the two rectangles.
 
-    double relOver = 0.0;
+	//right, left, top and bot edge locations for this rectangle
+	double tright = this->x + this->width / 2.0;
+	double tleft = this->x - this->width / 2.0;
+	double ttop = this->y + this->height / 2.0;
+	double tbot = this->y - this->height / 2.0;
 
-printf("TODO: %s:%d\n", __FILE__, __LINE__); 
+	//right, left, top and bot edge locations for other rectangle
+	double oright = other.x + other.width / 2.0;
+	double oleft = other.x - other.width / 2.0;
+	double otop = other.y + other.height / 2.0;
+	double obot = other.y - other.height / 2.0;
+
+	double interWidth = min(tright, oright) - max(tleft, oleft);
+	double interHeight = min(ttop, otop) - max(tbot, obot);
+	double relOver = 0.0, interArea = 0.0, unionArea = 0.0;
+	
+	if(interWidth > 0 && interHeight > 0){
+		interArea = interWidth * interHeight;
+		unionArea = (oright-oleft)*(otop-obot) + (tright-tleft)*(ttop-tbot) - interArea;
+		relOver = interArea / unionArea;
+	}
 
     /******** END TODO ********/
     return relOver;
