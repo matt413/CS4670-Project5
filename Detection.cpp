@@ -28,7 +28,7 @@ Detection::relativeOverlap(const Detection &other) const
     // where AreaInter is the area of the intersection of the two
     // rectangles r1 and r2, and AreaUnion is the area of the union
     // of the two rectangles.
-
+printf("Detection::relativeOverlap(): %s:%d\n", __FILE__, __LINE__); 
 	//right, left, top and bot edge locations for this rectangle
 	double tright = this->x + this->width / 2.0;
 	double tleft = this->x - this->width / 2.0;

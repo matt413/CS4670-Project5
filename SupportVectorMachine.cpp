@@ -88,6 +88,8 @@ SupportVectorMachine::train(const std::vector<float> &labels, const FeatureColle
     // each feature vector of size k takes up k+1 svm_node's in _data
     // the last one being simply to indicate that the feature has ended by setting the index
     // entry to -1
+//printf("SupportVectorMachine::train(): %s:%d\n", __FILE__, __LINE__); 
+    /*
     _data = new svm_node[nVecs * (dim + 1)];
 	double dLabel = (double)labels[0];
 	problem.y = &dLabel;
@@ -96,7 +98,7 @@ SupportVectorMachine::train(const std::vector<float> &labels, const FeatureColle
 		Feature currentFeature = fset[i];
 		for (int j = 0; j < dim+1; j++){
 			int band = j % shape.nBands;
-			int xPixel = (int)floor(j/3.0);
+            int xPixel = (int)floor((double)(j/shape.nBands));
 			int yPixel = i;
 			if(j == 0) {
 				dataPtr->index = 0;
@@ -113,6 +115,45 @@ SupportVectorMachine::train(const std::vector<float> &labels, const FeatureColle
 			dataPtr += 1;
 		}
 	}
+    */
+    
+    // Initialize variables (for indexing in image)
+    int band;       // band # (for images with multiple bands)
+    int x;          // image x position
+    int y;          // image y position
+
+    // Intialize new vector of svm_nodes where each feature vector of size k takes up
+    // k+1 svm_nodes
+    _data = new svm_node[nVecs * (dim+1)];
+
+    // Iterate through feature vectors, copying the data into the appropriate 
+    // data structures
+    for (int k=0; k<nVecs; k++) {
+        // Copy label into problem.y
+        problem.y[k] = (double) labels[k];
+
+        // Copy address in _data where the k-th feature vector starts into problem.x
+        problem.x[k] = &_data[k*(dim+1)];
+
+        // Copy feature vector into _data
+		Feature currentFeature = fset[k];
+        for (int i=0; i<dim+1; i++) {
+            band = i % shape.nBands;
+            x = i % (shape.width * shape.nBands);
+            y = floor((double) (i / (shape.width * shape.nBands)));
+            
+            if (i != dim) {
+                // Index entry indicates position in feature vector
+                _data[k*(dim+1)+i].index = i;                                   
+                // Value entry is value in original feature vector
+                _data[k*(dim+1)+i].value = currentFeature.Pixel(x, y, band);
+            }
+            else {
+                // Set index of last svm_node to -1 to indicate the feature has ended
+                _data[k*(dim+1)+dim].index = -1;
+            }
+        }
+    }
 
     /******** END TODO ********/
 

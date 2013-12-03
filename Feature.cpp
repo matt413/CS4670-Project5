@@ -292,7 +292,7 @@ TinyImageGradFeatureExtractor::operator()(const CFloatImage &imgRGB_, Feature &f
     // Useful functions:
     // convertRGB2GrayImage, TypeConvert, WarpGlobal, Convolve
 
-printf("TinyImageGradFeatureExtractor::operator(): %s:%d\n", __FILE__, __LINE__); 
+//printf("TinyImageGradFeatureExtractor::operator(): %s:%d\n", __FILE__, __LINE__); 
     
     // Convert image to grayscale
     CFloatImage imgG;
@@ -313,6 +313,7 @@ printf("TinyImageGradFeatureExtractor::operator(): %s:%d\n", __FILE__, __LINE__)
 
     for (int j=0; j<targetH; j++) {
         for (int i=0; i<targetW; i++) {
+            // gradient magnitude = sqrt(dx^2 + dy^2)
             magImg.Pixel(i, j, 0) = sqrt(pow(dX.Pixel(i, j, 0), 2) + pow(dY.Pixel(i, j, 0), 2));
         }
     }
