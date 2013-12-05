@@ -1,4 +1,5 @@
 #include "ObjectDetector.h"
+#include <algorithm>
 
 #define WIN_SIZE_NMS_KEY   "nms_win_size"
 #define RESP_THESH_KEY     "sv_response_threshold"
@@ -54,11 +55,33 @@ ObjectDetector::operator()( const CFloatImage &svmResp, const Size &roiSize,
     // ou will have to correct location and dimensions using a scale factor
     // that is a function of featureScaleFactor and imScale.
 
+	CShape svmRespShape = svmResp.Shape();
+	double scale = imScale * featureScaleFactor;
+	for (int x = 0; x < svmRespShape.width; x++) {
+		for (int y = 0; y < svmRespShape.height; y++) {
+			if(svmResp.Pixel(x,y,0) == getMaxofImageWindow(svmResp, x, y, _winSizeNMS)) {
+				Detection det = Detection(x*scale, y*scale, svmResp.Pixel(x,y,0), roiSize.width*scale, roiSize.height*scale);
+				dets.push_back(det);
+			}
+		}
+	}
+
     dets.resize(0);
 
-printf("TODO: %s:%d\n", __FILE__, __LINE__); 
-
     /******** END TODO ********/
+}
+
+float getMaxofImageWindow(const CFloatImage &img, int xC, int yC, int _winSizeNMS){
+	float max = 0.0;
+	for (int x = xC - _winSizeNMS; x < xC + _winSizeNMS; x++) {
+		for (int y = yC - _winSizeNMS; y < yC + _winSizeNMS; y++) {
+			if(x > 0 && y > 0 && x < img.Shape().width && y < img.Shape().height) {
+				if(img.Pixel(x, y, 0) > max)
+					max = img.Pixel(x,y,0);
+			}
+		}
+	}
+	return max;
 }
 
 bool
@@ -102,6 +125,24 @@ ObjectDetector::operator()( const SBFloatPyramid &svmRespPyr, const Size &roiSiz
 
         allDets.insert(allDets.end(), levelDets.begin(), levelDets.end());
     }
+	std::sort(allDets.begin(), allDets.end(), sortByResponse);
+	std:vector<Detection> useDets;
+
+	for (int i = 0; i < allDets.size(); i++) {
+		Detection curDet = allDets[i];
+		bool addDet = true;
+		for (int j = 0;j < useDets.size(); j++) {
+			if(curDet.relativeOverlap(useDets[j]) > _overlapThresh){
+				addDet = false;
+				break;
+			}
+		}
+		if(addDet){
+			useDets.insert(useDets.end(), curDet);
+		}
+	}
+
+	
 
 printf("TODO: %s:%d\n", __FILE__, __LINE__); 
 
