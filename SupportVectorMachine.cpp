@@ -330,24 +330,27 @@ SupportVectorMachine::predictSlidingWindow(const Feature &feat, CFloatImage &res
     // Convolve, BandSelect, this->getWeights(), this->getBiasTerm()
 	double bias = this->getBiasTerm();
 	Feature weights = this->getWeights();
-	CFloatImage convImg = CFloatImage(feat.Shape());
+	CShape wshape = weights.Shape();
+	CShape fshape = feat.Shape();
+	CFloatImage convImg = CFloatImage(fshape);
 
 	for(int i = 0; i < weights.Shape().nBands; i++) {
-		CFloatImage bandWeight, bandFeat, tempImg;
+		CFloatImage bandWeight = CFloatImage(wshape.width, wshape.height, 1);
+		CFloatImage bandFeat = CFloatImage(fshape.width, fshape.height, 1);
+		CFloatImage tempImg = CFloatImage(fshape.width, fshape.height, 1);
 		
-		BandSelect(weights, bandWeight,i,i);
-		BandSelect(feat, bandFeat,i,i);
-		bandFeat.origin[0] = feat.origin[0];
-		bandFeat.origin[1] = feat.origin[1];
+		BandSelect(weights, bandWeight,i,0);
+		BandSelect(feat, bandFeat,i,0);
+		bandWeight.origin[0] = weights.origin[0];
+		bandWeight.origin[1] = weights.origin[1];
 		Convolve(bandFeat, tempImg, bandWeight);
 		BandSelect(tempImg, convImg, 0, i);
 	}
-	Convolve(feat, convImg, weights);
 	float prediction = 0.;
 	for(int x = 0; x < feat.Shape().width; x++) {
 		for(int y = 0; y < feat.Shape().height; y++) {
 			float bandSum = 0.;
-			for(int bandNum = 0; bandNum < convImg.Shape().nBands; bandNum++) {
+			for(int bandNum = 0; bandNum < fshape.nBands; bandNum++) {
 				bandSum += convImg.Pixel(x,y,bandNum);
 			}
 			prediction = bandSum - bias;
