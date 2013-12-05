@@ -330,15 +330,24 @@ SupportVectorMachine::predictSlidingWindow(const Feature &feat, CFloatImage &res
     // Convolve, BandSelect, this->getWeights(), this->getBiasTerm()
 	double bias = this->getBiasTerm();
 	Feature weights = this->getWeights();
-	weights.origin[0] = (int)floor(weights.Shape().height / 2.0);
-	weights.origin[1] = (int)floor(weights.Shape().width / 2.0);
 	CFloatImage convImg = CFloatImage(feat.Shape());
+
+	for(int i = 0; i < weights.Shape().nBands; i++) {
+		CFloatImage bandWeight, bandFeat, tempImg;
+		
+		BandSelect(weights, bandWeight,i,i);
+		BandSelect(feat, bandFeat,i,i);
+		bandFeat.origin[0] = feat.origin[0];
+		bandFeat.origin[1] = feat.origin[1];
+		Convolve(bandFeat, tempImg, bandWeight);
+		BandSelect(tempImg, convImg, 0, i);
+	}
 	Convolve(feat, convImg, weights);
 	float prediction = 0.;
 	for(int x = 0; x < feat.Shape().width; x++) {
 		for(int y = 0; y < feat.Shape().height; y++) {
 			float bandSum = 0.;
-			for(int bandNum = 0; bandNum < feat.Shape().nBands; bandNum++) {
+			for(int bandNum = 0; bandNum < convImg.Shape().nBands; bandNum++) {
 				bandSum += convImg.Pixel(x,y,bandNum);
 			}
 			prediction = bandSum - bias;
