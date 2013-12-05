@@ -141,6 +141,7 @@ ObjectDetector::operator()( const SBFloatPyramid &svmRespPyr, const Size &roiSiz
 			useDets.insert(useDets.end(), curDet);
 		}
 	}
+	dets = useDets;
 
 	
 
