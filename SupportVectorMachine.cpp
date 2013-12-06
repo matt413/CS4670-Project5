@@ -71,7 +71,6 @@ SupportVectorMachine::train(const std::vector<float> &labels, const FeatureColle
     problem.x = new svm_node*[nVecs];
     if(_data) delete [] _data;
 
-    /******** BEGIN TODO ********/
     // Copy the data used for training the SVM into the libsvm data structures "problem".
     // Put the feature vectors in _data and labels in problem.y. Also, problem.x[k]
     // should point to the address in _data where the k-th feature vector starts (i.e.,
@@ -88,7 +87,7 @@ SupportVectorMachine::train(const std::vector<float> &labels, const FeatureColle
     // each feature vector of size k takes up k+1 svm_node's in _data
     // the last one being simply to indicate that the feature has ended by setting the index
     // entry to -1
-//printf("SupportVectorMachine::train(): %s:%d\n", __FILE__, __LINE__); 
+
     // Initialize variables (for indexing in image)
     int band;       // band # (for images with multiple bands)
     int x;          // image x position
@@ -124,12 +123,8 @@ SupportVectorMachine::train(const std::vector<float> &labels, const FeatureColle
                 // Set index of last svm_node to -1 to indicate the feature has ended
                 _data[k*(dim+1)+dim].index = -1;
             }
-            
-            //printf("[%d]: i = %d -> (%d, %d, %d), idx = %d, value = %f -> %f\n", k, i, x, y, band, _data[k*(dim+1)+i].index, currentFeature.Pixel(x, y, band), _data[k*(dim+1)+i].value); 
         }
     }
-
-    /******** END TODO ********/
 
     // Train the model
     if(_model != NULL) svm_free_and_destroy_model(&_model);
