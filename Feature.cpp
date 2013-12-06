@@ -279,7 +279,6 @@ TinyImageGradFeatureExtractor::operator()(const CFloatImage &imgRGB_, Feature &f
     int targetW = _round(imgRGB_.Shape().width * _scale);
     int targetH = _round(imgRGB_.Shape().height * _scale);
 
-    /******** BEGIN TODO ********/
     // Compute tiny image gradient feature, output should be a _targetW by _targetH
     // grayscale image, similar to tiny image. The difference here is that you will
     // compute the gradients in the x and y directions, followed by the gradient
@@ -293,8 +292,6 @@ TinyImageGradFeatureExtractor::operator()(const CFloatImage &imgRGB_, Feature &f
     //
     // Useful functions:
     // convertRGB2GrayImage, TypeConvert, WarpGlobal, Convolve
-
-//printf("TinyImageGradFeatureExtractor::operator(): %s:%d\n", __FILE__, __LINE__); 
     
     // Convert image to grayscale
     CFloatImage imgG;
@@ -322,8 +319,6 @@ TinyImageGradFeatureExtractor::operator()(const CFloatImage &imgRGB_, Feature &f
 
     // Return feature
     feat = magImg;
-
-    /******** END TODO ********/
 }
 
 CByteImage
@@ -410,7 +405,6 @@ HOGFeatureExtractor::HOGFeatureExtractor(const ParametersMap &params)
 void
 HOGFeatureExtractor::operator()(const CFloatImage &img, Feature &feat) const
 {
-    /******** BEGIN TODO ********/
     // Compute the Histogram of Oriented Gradients feature
     //
     // Steps are:
@@ -436,7 +430,7 @@ HOGFeatureExtractor::operator()(const CFloatImage &img, Feature &feat) const
     // Useful functions:
     // convertRGB2GrayImage, TypeConvert, WarpGlobal, Convolve
 
-//printf("HOGFeatureExtractor::operator(): %s:%d\n", __FILE__, __LINE__); 
+    // Get image dimensions
     int imgWidth = img.Shape().width; 
     int imgHeight = img.Shape().height;
 
@@ -445,62 +439,69 @@ HOGFeatureExtractor::operator()(const CFloatImage &img, Feature &feat) const
     Convolve(img, dxImg, _kernelDx);   // gradient in x direction 
     Convolve(img, dyImg, _kernelDy);   // gradient in y direction
 
-    // Compute gradient magnitude and orientation
-    //CFloatImage magImg(imgWidth, imgHeight, 1);
-    //CFloatImage orntImg(imgWidth, imgHeight, 1);
-
+    // Initialize feature image
     int targetW = ceil((double)imgWidth / _cellSize);
     int targetH = ceil((double)imgHeight / _cellSize);
     CFloatImage hogImg(targetW, targetH, _nAngularBins);
     hogImg.ClearPixels();
 
-    double dx, dy;
-    int cx, cy, bin;
-    double magnitude, orientation;
-    bool up, down, left, right;
+    // Initialize variables
+    double dx, dy;                  // gradient values in x and y directions
+    int cx, cy, bin;                // variables for indexing into HOG image
+    double magnitude, orientation;  // gradient magnitude and orientation variables
+    bool up, down, left, right;     // booleans for determining overlapping cells
 
+    // Calculate gradient magnitude and orientation, adding the weighted values to the appropriate bins of the appropriate cells
     for (int j=0; j<imgHeight; j++) {
         for (int i=0; i<imgWidth; i++) {
             dx = dxImg.Pixel(i, j, 0);
             dy = dyImg.Pixel(i, j, 0);
             
-            // Compute gradient magnitude and store in magImg
-            //magImg.Pixel(i, j, 0) = sqrt(pow(dx, 2) + pow(dy, 2));
+            // Compute gradient magnitude
             magnitude = sqrt(pow(dx, 2) + pow(dy, 2));
 
-            // Compute gradient orientation and store in orntImg
+            // Compute gradient orientation
             if(dx == 0.0 && dy == 0.0)
-	        	//orntImg.Pixel(i, j, 0) = 0.0;
                 orientation = 0.0;
 	        else
-	        	//orntImg.Pixel(i, j, 0) = atan2(dy, dx);
                 orientation = atan2(dy, dx); 
             
+            // Find which cell the pixel is currently in
             cx = i/_cellSize;
             cy = j/_cellSize;
+
+            // Find which bin the gradient orientation corresponds too (we add an offset so that -PI corresponds to bin 0)
             bin = (floor((double)(orientation+PI)/(2*PI/_nAngularBins)) == _nAngularBins) ? _nAngularBins-1 : floor((double)(orientation+PI)/(2*PI/_nAngularBins));
-            //bin = (bin + (_nAngularBins/2)) % _nAngularBins; 
 
-            //printf("Pixel(%2d,%3d), Cell(%2d,%2d,%2d) -> %f + Magnitude = %f, Orientation = %f\n", i, j, cx, cy, bin, hogImg.Pixel(cx, cy, bin), magnitude, orientation*180/PI + 180);
-            //hogImg.Pixel(cx, cy, bin) += magnitude;
-
+            // Add the weighted gradient magnitude to the appropriate angular bin of the current cell
             hogImg.Pixel(cx, cy, bin) += gaussWeight(i, j, (cx+0.5)*_cellSize, (cy+0.5)*_cellSize) * magnitude;
 
+            //=========================================================
+            // Determine which other cells the pixel contributes to
+            //=========================================================
             up = down = left = right = false;
-
+            
+            // If the pixel is on the left half of the current cell and a cell exists to the left of the current cell, 
+            // add the pixel's weighted contribution the appropriate bin in the left cell, and set the appropriate boolean
             if ((i < (cx+0.5)*_cellSize) && (cx-1 > 0)) {
                 hogImg.Pixel(cx-1, cy, bin) += gaussWeight(i, j, (cx-0.5)*_cellSize, (cy+0.5)*_cellSize) * magnitude;
                 left = true;
             } 
+            // If the pixel is on the right half of the current cell and a cell exists to the right of the current cell, 
+            // add the pixel's weighted contribution the appropriate bin in the right cell, and set the appropriate boolean
             else if ((i >= (cx+0.5)*_cellSize) && ((cx+1)*_cellSize < imgWidth)) {
                 hogImg.Pixel(cx+1, cy, bin) += gaussWeight(i, j, (cx+1.5)*_cellSize, (cy+0.5)*_cellSize) * magnitude;
                 right = true;
             }
 
+            // If the pixel is on the top half of the current cell and a cell exists above the current cell, add the pixel's
+            // weighted contribution the appropriate bin in the top cell, and set the appropriate boolean
             if ((j < (cy+0.5)*_cellSize) && (cy-1 > 0)) {
                 hogImg.Pixel(cx, cy-1, bin) += gaussWeight(i, j, (cx+0.5)*_cellSize, (cy-0.5)*_cellSize) * magnitude;
                 up = true;
             } 
+            // If the pixel is on the lower half of the current cell and a cell exists below the current cell, add the pixel's
+            // weighted contribution the appropriate bin in the bottom cell, and set the appropriate boolean
             else if ((j >= (cy+0.5)*_cellSize) && ((cy+1)*_cellSize < imgHeight)) {
                 hogImg.Pixel(cx, cy+1, bin) += gaussWeight(i, j, (cx+0.5)*_cellSize, (cy+1.5)*_cellSize) * magnitude;
                 down = true;
@@ -508,42 +509,34 @@ HOGFeatureExtractor::operator()(const CFloatImage &img, Feature &feat) const
 
             if (up) {
                 if (left) {
+                    // If the pixel contributes to a left and top cell, it also contributes to a diagonal top-left cell
                     hogImg.Pixel(cx-1, cy-1, bin) += gaussWeight(i, j, (cx-0.5)*_cellSize, (cy-0.5)*_cellSize) * magnitude;
                 } 
                 else if (right) {
+                    // If the pixel contributes to a right and top cell, it also contributes to a diagonal top-right cell
                     hogImg.Pixel(cx+1, cy-1, bin) += gaussWeight(i, j, (cx+1.5)*_cellSize, (cy-0.5)*_cellSize) * magnitude;
                 }
             }
             else if (down) {
                 if (left) {
+                    // If the pixel contributes to a left and bottom cell, it also contributes to a diagonal bottom-left cell
                     hogImg.Pixel(cx-1, cy+1, bin) += gaussWeight(i, j, (cx-0.5)*_cellSize, (cy+1.5)*_cellSize) * magnitude;
                 } 
                 else if (right) {
+                    // If the pixel contributes to a right and bottom cell, it also contributes to a diagonal bottom-right cell
                     hogImg.Pixel(cx+1, cy+1, bin) += gaussWeight(i, j, (cx+1.5)*_cellSize, (cy+1.5)*_cellSize) * magnitude;
                 }
             }
-
-            /*
-            if (((cx+1)*_cellSize < imgWidth) && ((cy+1)*_cellSize < imgHeight)) {
-                hogImg.Pixel(cx+1, cy, bin) += gaussWeight(i, j, (cx+1.5)*_cellSize, (cy+0.5)*_cellSize) * magnitude;
-                hogImg.Pixel(cx, cy+1, bin) += gaussWeight(i, j, (cx+0.5)*_cellSize, (cy+1.5)*_cellSize) * magnitude;
-                hogImg.Pixel(cx+1, cy+1, bin) += gaussWeight(i, j, (cx+1.5)*_cellSize, (cy+1.5)*_cellSize) * magnitude;
-            } 
-            else if ((cx+1)*_cellSize < imgWidth) {
-                hogImg.Pixel(cx+1, cy, bin) += gaussWeight(i, j, (cx+1.5)*_cellSize, (cy+0.5)*_cellSize) * magnitude;
-            }
-            else if ((cy+1)*_cellSize < imgHeight) {
-                hogImg.Pixel(cx, cy+1, bin) += gaussWeight(i, j, (cx+0.5)*_cellSize, (cy+1.5)*_cellSize) * magnitude;
-            }*/
         }
     }
+
+    // Normalize the histograms in each cell to have a total area of 1
     double area = 0;
     for (int j=0; j<targetH; j++) {
         for (int i=0; i<targetW; i++) {
             area = 0;
             for (int b=0; b<_nAngularBins; b++) {
                 area += (2*PI/_nAngularBins) * hogImg.Pixel(i, j, b);
-                //printf("Pixel(%d, %d, %d), val = %f, area = %f\n", i, j, b, hogImg.Pixel(i, j, b), area); 
             }
 
             for (int b=0; b<_nAngularBins; b++) {
@@ -551,11 +544,16 @@ HOGFeatureExtractor::operator()(const CFloatImage &img, Feature &feat) const
             }
         }
     }
-    feat = hogImg;
 
-    /******** END TODO ********/
+    // Return feature
+    feat = hogImg;
 }
 
+/**
+* Helper function to return a gaussian weight based on the distance between a pixel and the 
+* center of a cell, where the pixel coordinates are (px, py), and the cell center coordinates 
+* are (cx, cy)
+*/
 double
 HOGFeatureExtractor::gaussWeight(double px, double py, double cx, double cy) const 
 {
