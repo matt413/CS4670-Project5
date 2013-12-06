@@ -1,5 +1,7 @@
 #include "Feature.h"
 
+#define PI 3.14159265
+
 static
 double
 _round(double d)
@@ -434,7 +436,7 @@ HOGFeatureExtractor::operator()(const CFloatImage &img, Feature &feat) const
     // Useful functions:
     // convertRGB2GrayImage, TypeConvert, WarpGlobal, Convolve
 
-printf("HOGFeatureExtractor::operator(): %s:%d\n", __FILE__, __LINE__); 
+//printf("HOGFeatureExtractor::operator(): %s:%d\n", __FILE__, __LINE__); 
     int imgWidth = img.Shape().width; 
     int imgHeight = img.Shape().height;
 
@@ -444,10 +446,18 @@ printf("HOGFeatureExtractor::operator(): %s:%d\n", __FILE__, __LINE__);
     Convolve(img, dyImg, _kernelDy);   // gradient in y direction
 
     // Compute gradient magnitude and orientation
-    CFloatImage magImg(imgWidth, imgHeight, 1);
-    CFloatImage orntImg(imgWidth, imgHeight, 1);
+    //CFloatImage magImg(imgWidth, imgHeight, 1);
+    //CFloatImage orntImg(imgWidth, imgHeight, 1);
+
+    int targetW = ceil((double)imgWidth / _cellSize);
+    int targetH = ceil((double)imgHeight / _cellSize);
+    CFloatImage hogImg(targetW, targetH, _nAngularBins);
+    hogImg.ClearPixels();
 
     double dx, dy;
+    int cx, cy, bin;
+    double magnitude, orientation;
+    bool up, down, left, right;
 
     for (int j=0; j<imgHeight; j++) {
         for (int i=0; i<imgWidth; i++) {
@@ -455,17 +465,103 @@ printf("HOGFeatureExtractor::operator(): %s:%d\n", __FILE__, __LINE__);
             dy = dyImg.Pixel(i, j, 0);
             
             // Compute gradient magnitude and store in magImg
-            magImg.Pixel(i, j, 0) = sqrt(pow(dx, 2) + pow(dy, 2));
+            //magImg.Pixel(i, j, 0) = sqrt(pow(dx, 2) + pow(dy, 2));
+            magnitude = sqrt(pow(dx, 2) + pow(dy, 2));
 
             // Compute gradient orientation and store in orntImg
             if(dx == 0.0 && dy == 0.0)
-	        	orntImg.Pixel(i, j, 0) = 0.0;
+	        	//orntImg.Pixel(i, j, 0) = 0.0;
+                orientation = 0.0;
 	        else
-	        	orntImg.Pixel(i, j, 0) = atan2(dy, dx);
+	        	//orntImg.Pixel(i, j, 0) = atan2(dy, dx);
+                orientation = atan2(dy, dx); 
+            
+            cx = i/_cellSize;
+            cy = j/_cellSize;
+            bin = (floor((double)(orientation+PI)/(2*PI/_nAngularBins)) == _nAngularBins) ? _nAngularBins-1 : floor((double)(orientation+PI)/(2*PI/_nAngularBins));
+            //bin = (bin + (_nAngularBins/2)) % _nAngularBins; 
+
+            //printf("Pixel(%2d,%3d), Cell(%2d,%2d,%2d) -> %f + Magnitude = %f, Orientation = %f\n", i, j, cx, cy, bin, hogImg.Pixel(cx, cy, bin), magnitude, orientation*180/PI + 180);
+            //hogImg.Pixel(cx, cy, bin) += magnitude;
+
+            hogImg.Pixel(cx, cy, bin) += gaussWeight(i, j, (cx+0.5)*_cellSize, (cy+0.5)*_cellSize) * magnitude;
+
+            up = down = left = right = false;
+
+            if ((i < (cx+0.5)*_cellSize) && (cx-1 > 0)) {
+                hogImg.Pixel(cx-1, cy, bin) += gaussWeight(i, j, (cx-0.5)*_cellSize, (cy+0.5)*_cellSize) * magnitude;
+                left = true;
+            } 
+            else if ((i >= (cx+0.5)*_cellSize) && ((cx+1)*_cellSize < imgWidth)) {
+                hogImg.Pixel(cx+1, cy, bin) += gaussWeight(i, j, (cx+1.5)*_cellSize, (cy+0.5)*_cellSize) * magnitude;
+                right = true;
+            }
+
+            if ((j < (cy+0.5)*_cellSize) && (cy-1 > 0)) {
+                hogImg.Pixel(cx, cy-1, bin) += gaussWeight(i, j, (cx+0.5)*_cellSize, (cy-0.5)*_cellSize) * magnitude;
+                up = true;
+            } 
+            else if ((j >= (cy+0.5)*_cellSize) && ((cy+1)*_cellSize < imgHeight)) {
+                hogImg.Pixel(cx, cy+1, bin) += gaussWeight(i, j, (cx+0.5)*_cellSize, (cy+1.5)*_cellSize) * magnitude;
+                down = true;
+            }
+
+            if (up) {
+                if (left) {
+                    hogImg.Pixel(cx-1, cy-1, bin) += gaussWeight(i, j, (cx-0.5)*_cellSize, (cy-0.5)*_cellSize) * magnitude;
+                } 
+                else if (right) {
+                    hogImg.Pixel(cx+1, cy-1, bin) += gaussWeight(i, j, (cx+1.5)*_cellSize, (cy-0.5)*_cellSize) * magnitude;
+                }
+            }
+            else if (down) {
+                if (left) {
+                    hogImg.Pixel(cx-1, cy+1, bin) += gaussWeight(i, j, (cx-0.5)*_cellSize, (cy+1.5)*_cellSize) * magnitude;
+                } 
+                else if (right) {
+                    hogImg.Pixel(cx+1, cy+1, bin) += gaussWeight(i, j, (cx+1.5)*_cellSize, (cy+1.5)*_cellSize) * magnitude;
+                }
+            }
+
+            /*
+            if (((cx+1)*_cellSize < imgWidth) && ((cy+1)*_cellSize < imgHeight)) {
+                hogImg.Pixel(cx+1, cy, bin) += gaussWeight(i, j, (cx+1.5)*_cellSize, (cy+0.5)*_cellSize) * magnitude;
+                hogImg.Pixel(cx, cy+1, bin) += gaussWeight(i, j, (cx+0.5)*_cellSize, (cy+1.5)*_cellSize) * magnitude;
+                hogImg.Pixel(cx+1, cy+1, bin) += gaussWeight(i, j, (cx+1.5)*_cellSize, (cy+1.5)*_cellSize) * magnitude;
+            } 
+            else if ((cx+1)*_cellSize < imgWidth) {
+                hogImg.Pixel(cx+1, cy, bin) += gaussWeight(i, j, (cx+1.5)*_cellSize, (cy+0.5)*_cellSize) * magnitude;
+            }
+            else if ((cy+1)*_cellSize < imgHeight) {
+                hogImg.Pixel(cx, cy+1, bin) += gaussWeight(i, j, (cx+0.5)*_cellSize, (cy+1.5)*_cellSize) * magnitude;
+            }*/
         }
     }
+    double area = 0;
+    for (int j=0; j<targetH; j++) {
+        for (int i=0; i<targetW; i++) {
+            area = 0;
+            for (int b=0; b<_nAngularBins; b++) {
+                area += (2*PI/_nAngularBins) * hogImg.Pixel(i, j, b);
+                //printf("Pixel(%d, %d, %d), val = %f, area = %f\n", i, j, b, hogImg.Pixel(i, j, b), area); 
+            }
+
+            for (int b=0; b<_nAngularBins; b++) {
+                hogImg.Pixel(i, j, b) = (area != 0) ? hogImg.Pixel(i, j, b)/area : 0;
+            }
+        }
+    }
+    feat = hogImg;
 
     /******** END TODO ********/
+}
+
+double
+HOGFeatureExtractor::gaussWeight(double px, double py, double cx, double cy) const 
+{
+    double distance = sqrt(pow(px-cx,2) + pow(py-cy, 2));
+
+    return (1/(_cellSize*sqrt(2*PI)))*exp(-0.5*(pow(distance/_cellSize,2)));
 }
 
 CByteImage

@@ -127,6 +127,8 @@ public:
 
     void operator()(const CFloatImage &image, Feature &feat) const;
 
+    double gaussWeight(double px, double py, double cx, double cy) const; 
+
     CByteImage render(const Feature &f) const;
 
     double scaleFactor() const { return 1.0 / double(_cellSize); }
