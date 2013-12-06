@@ -89,34 +89,6 @@ SupportVectorMachine::train(const std::vector<float> &labels, const FeatureColle
     // the last one being simply to indicate that the feature has ended by setting the index
     // entry to -1
 //printf("SupportVectorMachine::train(): %s:%d\n", __FILE__, __LINE__); 
-    /*
-    _data = new svm_node[nVecs * (dim + 1)];
-	double dLabel = (double)labels[0];
-	problem.y = &dLabel;
-	svm_node *dataPtr = &_data[0];
-	for (int i = 0; i < nVecs; i++){
-		Feature currentFeature = fset[i];
-		for (int j = 0; j < dim+1; j++){
-			int band = j % shape.nBands;
-            int xPixel = (int)floor((double)(j/shape.nBands));
-			int yPixel = i;
-			if(j == 0) {
-				dataPtr->index = 0;
-				dataPtr->value = currentFeature.Pixel(xPixel, yPixel, band);
-				problem.x[i] = dataPtr;
-			}
-			else if(j == dim) {
-				dataPtr->index = -1;
-			}
-			else {
-				dataPtr->index = j;
-				dataPtr->value = currentFeature.Pixel(xPixel, yPixel, band);
-			}
-			dataPtr += 1;
-		}
-	}
-    */
-    
     // Initialize variables (for indexing in image)
     int band;       // band # (for images with multiple bands)
     int x;          // image x position
@@ -139,9 +111,9 @@ SupportVectorMachine::train(const std::vector<float> &labels, const FeatureColle
 		Feature currentFeature = fset[k];
         for (int i=0; i<dim+1; i++) {
             band = i % shape.nBands;
-            x = i % (shape.width * shape.nBands);
-            y = floor((double) (i / (shape.width * shape.nBands)));
-            
+            x = (i % (shape.width * shape.nBands)) / shape.nBands;
+            y = i / (shape.width * shape.nBands);
+
             if (i != dim) {
                 // Index entry indicates position in feature vector
                 _data[k*(dim+1)+i].index = i;                                   
@@ -152,6 +124,8 @@ SupportVectorMachine::train(const std::vector<float> &labels, const FeatureColle
                 // Set index of last svm_node to -1 to indicate the feature has ended
                 _data[k*(dim+1)+dim].index = -1;
             }
+            
+            //printf("[%d]: i = %d -> (%d, %d, %d), idx = %d, value = %f -> %f\n", k, i, x, y, band, _data[k*(dim+1)+i].index, currentFeature.Pixel(x, y, band), _data[k*(dim+1)+i].value); 
         }
     }
 
