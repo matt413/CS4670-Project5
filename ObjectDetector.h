@@ -42,6 +42,8 @@ public:
     void operator()( const SBFloatPyramid &svmRespPyr, const Size &roiSize,
                      double featureScaleFactor, std::vector<Detection> &dets ) const;
 
+    float getMaxofImageWindow(const CFloatImage &img, int xC, int yC, int _winSizeNMS) const;
+
 private:
     int _winSizeNMS;
 

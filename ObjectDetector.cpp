@@ -55,23 +55,25 @@ ObjectDetector::operator()( const CFloatImage &svmResp, const Size &roiSize,
     // ou will have to correct location and dimensions using a scale factor
     // that is a function of featureScaleFactor and imScale.
 
+    dets.resize(0);
+
 	CShape svmRespShape = svmResp.Shape();
 	double scale = imScale * featureScaleFactor;
 	for (int x = 0; x < svmRespShape.width; x++) {
 		for (int y = 0; y < svmRespShape.height; y++) {
-			if(svmResp.Pixel(x,y,0) == getMaxofImageWindow(svmResp, x, y, _winSizeNMS)) {
+            if(svmResp.Pixel(x,y,0) == getMaxofImageWindow(svmResp, x, y, _winSizeNMS)) {
 				Detection det = Detection(x*scale, y*scale, svmResp.Pixel(x,y,0), roiSize.width*scale, roiSize.height*scale);
 				dets.push_back(det);
 			}
 		}
 	}
 
-    dets.resize(0);
-
     /******** END TODO ********/
 }
 
-float getMaxofImageWindow(const CFloatImage &img, int xC, int yC, int _winSizeNMS){
+float 
+ObjectDetector::getMaxofImageWindow(const CFloatImage &img, int xC, int yC, int _winSizeNMS) const 
+{
 	float max = 0.0;
 	for (int x = xC - _winSizeNMS; x < xC + _winSizeNMS; x++) {
 		for (int y = yC - _winSizeNMS; y < yC + _winSizeNMS; y++) {
